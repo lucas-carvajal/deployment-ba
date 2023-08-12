@@ -1,0 +1,1176 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  VPCName:
+    Description: CIDR range for our VPC
+    Type: String
+    Default: LakesideVPC
+  VPCCidr:
+    Description: CIDR range for our VPC
+    Type: String
+    Default: 10.0.0.0/16
+  PrivateSubnetACidr:
+    Description: Private Subnet IP Range
+    Type: String
+    Default: 10.0.0.0/24
+  PrivateSubnetBCidr:
+    Description: Private Subnet IP Range
+    Type: String
+    Default: 10.0.1.0/24
+  PublicSubnetACidr:
+    Description: Public Subnet IP Range
+    Type: String
+    Default: 10.0.2.0/24
+  PublicSubnetBCidr:
+    Description: Public Subnet IP Range
+    Type: String
+    Default: 10.0.3.0/24
+  AvailabilityZoneA:
+    Description: Availability Zone 1
+    Type: String
+    Default: eu-central-1a
+  AvailabilityZoneB:
+    Description: Availability Zone 2
+    Type: String
+    Default: eu-central-1b
+
+  CustomerCoreServiceName:
+    Type: String
+    Default: "customer-core"
+  CustomerManagementBackendName:
+    Type: String
+    Default: "customer-management-backend"
+  CustomerSelfServiceBackendName:
+    Type: String
+    Default: "customer-self-service-backend"
+  PolicyManagementBackendName:
+    Type: String
+    Default: "policy-management-backend"
+  RiskManagementServerName:
+    Type: String
+    Default: "risk-management-server"
+  SpringBootAdminName:
+    Type: String
+    Default: "spring-boot-admin"
+  CustomerManagementFrontendName:
+    Type: String
+    Default: "customer-management-frontend"
+  CustomerSelfServiceFrontendName:
+    Type: String
+    Default: "customer-self-service-frontend"
+  PolicyManagementFrontendName:
+    Type: String
+    Default: "policy-management-frontend"
+  RiskManagementClientName:
+    Type: String
+    Default: "risk-management-client"
+
+Resources:
+  # VPC, SUBNETS
+  LakesideVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !Ref VPCCidr
+      Tags:
+        - Key: Name
+          Value: !Ref VPCName
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LakesideVPC
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Ref PrivateSubnetACidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${VPCName}-PrivateSubnetA'
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LakesideVPC
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Ref PrivateSubnetBCidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${VPCName}-PrivateSubnetB'
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LakesideVPC
+      AvailabilityZone: !Ref AvailabilityZoneA
+      CidrBlock: !Ref PublicSubnetACidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${VPCName}-PrivateSubnetA'
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref LakesideVPC
+      AvailabilityZone: !Ref AvailabilityZoneB
+      CidrBlock: !Ref PublicSubnetBCidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${VPCName}-PrivateSubnetB'
+
+  # GATEWAYS, ROUTES
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref LakesideVPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref LakesideVPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetRouteTableAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetRouteTableAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  # IP, NAT GATEWAY, ROUTES
+  ElasticIPA:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  ElasticIPB:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  NATGatewayA:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIPA.AllocationId
+      SubnetId: !Ref PublicSubnetA
+  NATGatewayB:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIPB.AllocationId
+      SubnetId: !Ref PublicSubnetB
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref LakesideVPC
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref LakesideVPC
+  PrivateRouteToInternetA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayA
+  PrivateRouteToInternetB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayB
+  PrivateSubnetRouteTableAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTableA
+  PrivateSubnetRouteTableAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTableB
+
+
+  # LOAD BALANCERS
+  PublicLoadBalancersSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref LakesideVPC
+      SecurityGroupIngress:
+        # Allow access to ALB from anywhere on the internet
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  PrivateLoadBalancersSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref LakesideVPC
+
+  #Allowing access to the internal loadbalancer only from the security group
+  # of the frontend containers
+  PrivateLoadBalancerSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allowing access to the private ALB only from frontend containers
+      GroupId: !Ref PrivateLoadBalancersSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  # ECS CLUSTER
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: lakeside-cluster
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: lakeside-log-group
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lakeside-backend-execution-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # SECURITY GROUPS
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public ECS containers
+      VpcId: !Ref LakesideVPC
+
+  ECSInternalSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS private containers
+      VpcId: !Ref LakesideVPC
+
+  ECSSecurityGroupIngressFromPublicALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the public ALB
+      GroupId: !Ref ECSSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref PublicLoadBalancersSecurityGroup
+
+  ECSSecurityGroupIngressFromPrivateALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the private ALB
+      GroupId: !Ref ECSInternalSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref PrivateLoadBalancersSecurityGroup
+
+  ECSSecurityGroupIngressFromSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group
+      GroupId: !Ref ECSInternalSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSInternalSecurityGroup
+
+  ECSSecurityGroupIngressFromSelfPublic:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group
+      GroupId: !Ref ECSSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+
+
+
+
+
+
+
+  # SPRING BOOT ADMIN
+  SpringBootAdminTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref SpringBootAdminName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref SpringBootAdminName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/spring-boot-admin:latest
+          Environment:
+            - Name: SERVER_PORT
+              Value: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref SpringBootAdminName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  SpringBootAdminECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - SpringBootAdminLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref SpringBootAdminName
+      TaskDefinition: !Ref SpringBootAdminTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref SpringBootAdminName
+          ContainerPort: 80
+          TargetGroupArn: !Ref SpringBootAdminTargetGroup
+  SpringBootAdminTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      TargetType: ip
+      Name: !Ref SpringBootAdminName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  SpringBootAdminLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  SpringBootAdminLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref SpringBootAdminTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref SpringBootAdminLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # CUSTOMER CORE
+  CustomerCoreTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref CustomerCoreServiceName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref CustomerCoreServiceName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-core:latest
+          Environment:
+            - Name: SERVER_PORT
+              Value: 80
+            - Name: SPRING_BOOT_ADMIN_CLIENT_URL
+              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref CustomerCoreServiceName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  CustomerCoreECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - CustomerCoreLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref CustomerCoreServiceName
+      TaskDefinition: !Ref CustomerCoreTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref CustomerCoreServiceName
+          ContainerPort: 80
+          TargetGroupArn: !Ref CustomerCoreTargetGroup
+  CustomerCoreTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      TargetType: ip
+      Name: !Ref CustomerCoreServiceName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  CustomerCoreLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  CustomerCoreLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref CustomerCoreTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref CustomerCoreLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+  # CUSTOMER MANAGEMENT BACKEND
+  CustomerManagementBackendECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref CustomerManagementBackendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref CustomerManagementBackendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-management-backend:latest
+          Environment:
+            - Name: SERVER_PORT
+              Value: 80
+            - Name: SPRING_BOOT_ADMIN_CLIENT_URL
+              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+            - Name: CUSTOMERCORE_BASEURL
+              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref CustomerManagementBackendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  CustomerManagementBackendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - CustomerManagementBackendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref CustomerManagementBackendName
+      TaskDefinition: !Ref CustomerManagementBackendECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref CustomerManagementBackendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref CustomerManagementBackendTargetGroup
+  CustomerManagementBackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref CustomerManagementBackendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  CustomerManagementBackendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  CustomerManagementBackendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref CustomerManagementBackendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref CustomerManagementBackendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+  # CUSTOMER SELF SERVICE BACKEND
+  CustomerSelfServiceBackendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref CustomerSelfServiceBackendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref CustomerSelfServiceBackendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-self-service-backend:latest
+          Environment:
+            - Name: SERVER_PORT
+              Value: 80
+            - Name: SPRING_BOOT_ADMIN_CLIENT_URL
+              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+            - Name: CUSTOMERCORE_BASEURL
+              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+            - Name: POLICYMANAGEMENT_TCPBROKERBINDADDRESS
+              Value: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref CustomerSelfServiceBackendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  CustomerSelfServiceBackendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - CustomerSelfServiceBackendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref CustomerSelfServiceBackendName
+      TaskDefinition: !Ref CustomerSelfServiceBackendTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref CustomerSelfServiceBackendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref CustomerSelfServiceBackendTargetGroup
+  CustomerSelfServiceBackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref CustomerSelfServiceBackendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  CustomerSelfServiceBackendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  CustomerSelfServiceBackendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref CustomerSelfServiceBackendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref CustomerSelfServiceBackendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # POLICY MANAGEMENT BACKEND
+  PolicyManagementBackendECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref PolicyManagementBackendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref PolicyManagementBackendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/policy-management-backend:latest
+          Environment:
+            - Name: SERVER_PORT
+              Value: 80
+            - Name: SPRING_BOOT_ADMIN_CLIENT_URL
+              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+            - Name: CUSTOMERCORE_BASEURL
+              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref PolicyManagementBackendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+            - ContainerPort: 61613
+              HostPort: 61613
+            - ContainerPort: 61616
+              HostPort: 61616
+  PolicyManagementBackendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - PolicyManagementBackendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref PolicyManagementBackendName
+      TaskDefinition: !Ref PolicyManagementBackendECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref PolicyManagementBackendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref PolicyManagementBackendTargetGroup
+  PolicyManagementBackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref PolicyManagementBackendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  PolicyManagementBackendStompTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      #HealthCheckPath: /
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Sub
+        - "${servicename}-${name}"
+        - servicename: !Ref PolicyManagementBackendName
+          name: "stomp"
+      Port: 61613
+      Protocol: TCP # STOMP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  PolicyManagementBackendTcpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      #HealthCheckPath: /
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Sub
+        - "${servicename}-${name}"
+        - servicename: !Ref PolicyManagementBackendName
+          name: "tcp"
+      Port: 61616
+      Protocol: TCP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  PolicyManagementBackendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  PolicyManagementBackendNetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: network
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  PolicyManagementBackendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref PolicyManagementBackendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref PolicyManagementBackendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+  PolicyManagementBackendLoadBalancerTcpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref PolicyManagementBackendTcpTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref PolicyManagementBackendNetworkLoadBalancer
+      Port: 61613
+      Protocol: TCP
+  PolicyManagementBackendLoadBalancerStompListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref PolicyManagementBackendStompTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref PolicyManagementBackendNetworkLoadBalancer
+      Port: 61616
+      Protocol: TCP
+
+
+
+  # RISK MANAGEMENT SERVER
+  RiskManagementServerTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref RiskManagementServerName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref RiskManagementServerName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/risk-management-server:latest
+          Environment:
+            - Name: ACTIVEMQ_HOST
+              Value: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref RiskManagementServerName
+          PortMappings:
+            - ContainerPort: 50051
+              HostPort: 50051
+  RiskManagementServerECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - RiskManagementServerLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref RiskManagementServerName
+      TaskDefinition: !Ref RiskManagementServerTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSInternalSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref RiskManagementServerName
+          ContainerPort: 50051
+          TargetGroupArn: !Ref RiskManagementServerTargetGroup
+  RiskManagementServerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref RiskManagementServerName
+      Port: 50051
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  RiskManagementServerLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      SecurityGroups:
+        - !Ref PrivateLoadBalancersSecurityGroup
+  RiskManagementServerLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref RiskManagementServerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref RiskManagementServerLoadBalancer
+      Port: 50051
+      Protocol: HTTP
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # CUSTOMER MANAGEMENT FRONTEND
+  CustomerManagementFrontendECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref CustomerManagementFrontendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref CustomerManagementFrontendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-management-frontend:latest
+          Environment:
+            - Name: PORT
+              Value: 80
+            - Name: REACT_APP_CUSTOMER_SELF_SERVICE_BACKEND
+              Value: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
+            - Name: REACT_APP_CUSTOMER_MANAGEMENT_BACKEND
+              Value: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref CustomerManagementFrontendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  CustomerManagementFrontendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - CustomerManagementFrontendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref CustomerManagementFrontendName
+      TaskDefinition: !Ref CustomerManagementFrontendECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref CustomerManagementFrontendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref CustomerManagementFrontendTargetGroup
+  CustomerManagementFrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref CustomerManagementFrontendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  CustomerManagementFrontendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      SecurityGroups:
+        - !Ref PublicLoadBalancersSecurityGroup
+  CustomerManagementFrontendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref CustomerManagementFrontendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref CustomerManagementFrontendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+  # CUSTOMER SELF SERVICE FRONTEND
+  CustomerSelfServiceFrontendECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref CustomerSelfServiceFrontendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref CustomerSelfServiceFrontendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-self-service-frontend:latest
+          Environment:
+            - Name: PORT
+              Value: 80
+            - Name: REACT_APP_CUSTOMER_SELF_SERVICE_BACKEND
+              Value: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
+            - Name: REACT_APP_POLICY_MANAGEMENT_BACKEND
+              Value: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
+            - Name: REACT_APP_CUSTOMER_MANAGEMENT_BACKEND
+              Value: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref CustomerSelfServiceFrontendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  CustomerSelfServiceFrontendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - CustomerSelfServiceFrontendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref CustomerSelfServiceFrontendName
+      TaskDefinition: !Ref CustomerSelfServiceFrontendECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref CustomerSelfServiceFrontendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref CustomerSelfServiceFrontendTargetGroup
+  CustomerSelfServiceFrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref CustomerSelfServiceFrontendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  CustomerSelfServiceFrontendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      SecurityGroups:
+        - !Ref PublicLoadBalancersSecurityGroup
+  CustomerSelfServiceFrontendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref CustomerSelfServiceFrontendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref CustomerSelfServiceFrontendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+
+
+
+  # POLICY MANAGEMENT FRONTEND
+  PolicyManagementFrontendECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref PolicyManagementFrontendName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      Cpu: 256
+      Memory: 512
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: ARM64
+      ContainerDefinitions:
+        - Name: !Ref PolicyManagementFrontendName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/policy-management-frontend:latest
+          Environment:
+            - Name: VUE_APP_POLICY_MANAGEMENT_BACKEND
+              Value: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref PolicyManagementFrontendName
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+  PolicyManagementFrontendECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - PolicyManagementFrontendLoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: !Ref PolicyManagementFrontendName
+      TaskDefinition: !Ref PolicyManagementFrontendECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
+      LoadBalancers:
+        - ContainerName: !Ref PolicyManagementFrontendName
+          ContainerPort: 80
+          TargetGroupArn: !Ref PolicyManagementFrontendTargetGroup
+  PolicyManagementFrontendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Name: !Ref PolicyManagementFrontendName
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref LakesideVPC
+  PolicyManagementFrontendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      SecurityGroups:
+        - !Ref PublicLoadBalancersSecurityGroup
+  PolicyManagementFrontendLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref PolicyManagementFrontendTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref PolicyManagementFrontendLoadBalancer
+      Port: 80
+      Protocol: HTTP

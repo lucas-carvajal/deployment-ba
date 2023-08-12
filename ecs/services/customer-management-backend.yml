@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Customer Management Backend Service
+Parameters:
+  ServiceName:
+    Type: String
+    Default: customer-management-backend
+#  SpringBootAdminServiceURL:
+#    Type: String
+#    Default: !ImportValue SpringBootAdminServiceURL
+#  CustomerCoreURL:
+#    Type: String
+#    Default: !ImportValue CustomerCoreURL
+Resources:
+  CustomerManagementBackend:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: !Ref ServiceName
+      Description: Customer Management Backend
+      DnsConfig:
+        DnsRecords:
+          - TTL: 60
+            Type: A
+        RoutingPolicy: MULTIVALUE
+      NamespaceId: !ImportValue ServiceNamespaceId
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !ImportValue ECSTaskExecutionRoleARN
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: !Ref ServiceName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-management-backend:latest
+          Cpu: 256
+          Memory: 512
+          Environment:
+            - Name: SPRING_BOOT_ADMIN_CLIENT_URL
+              Value: !ImportValue SpringBootAdminServiceURL
+            - Name: CUSTOMERCORE_BASEURL
+              Value: !ImportValue CustomerCoreURL
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref ServiceName
+          PortMappings:
+            - ContainerPort: 8100
+              HostPort: 8100
+          DependsOn:
+            - !ImportValue BackendSecurityGroup
+          SecurityGroups:
+            - !ImportValue BackendSecurityGroup
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !ImportValue ECSCluster
+      ServiceName: !Ref ServiceName
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !ImportValue BackendSecurityGroup
+          Subnets:
+            - !ImportValue Subnet
+Outputs:
+  CustomerManagementBackendURL:
+    Value: !GetAtt CustomerManagementBackend.Arn
+    Export:
+      Name: CustomerManagementBackendURL

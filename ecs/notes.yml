@@ -1,0 +1,9 @@
+# new load balancer for each service
+# each load balancer has default listener forwarding to target group of service
+# each load balancer is in either the private or public subnet and security group for load balancers
+
+
+
+
+
+###### each service has target group for each container port?????

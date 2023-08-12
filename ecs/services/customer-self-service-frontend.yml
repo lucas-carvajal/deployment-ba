@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Customer Self Service Frontend
+Resources:
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: customer-self-service-frontend
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !ImportValue ECSTaskExecutionRoleARN
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: customer-self-service-frontend
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-self-service-frontend:latest
+          Cpu: 256
+          Memory: 512
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: customer-self-service-frontend
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+          DependsOn:
+            - !ImportValue FrontendSecurityGroup
+          SecurityGroups:
+            - !ImportValue FrontendSecurityGroup
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !ImportValue ECSCluster
+      ServiceName: customer-self-service-frontend
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !ImportValue FrontendSecurityGroup
+          Subnets:
+            - !ImportValue Subnet

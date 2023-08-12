@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Spring Boot Admin
+Parameters:
+  ServiceName:
+    Type: String
+    Default: spring-boot-admin
+Resources:
+  SpringBootAdminService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: !Ref ServiceName
+      Description: Customer Core Service
+      DnsConfig:
+        DnsRecords:
+          - TTL: 60
+            Type: A
+        RoutingPolicy: MULTIVALUE
+      NamespaceId: !ImportValue ServiceNamespaceId
+  AdminSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for spring boot admin.
+      SecurityGroupIngress:
+        # Allow incoming traffic from the open internet on port 9000
+        - CidrIp: 0.0.0.0/0
+          FromPort: 9000
+          ToPort: 9000
+        # Allow incoming traffic to the security group from the BackendSecurityGroup
+        - SourceSecurityGroupId: !ImportValue BackendSecurityGroup
+          IpProtocol: -1
+        # Allow outgoing traffic to the security group from the BackendSecurityGroup
+        - DestinationSecurityGroupId: !ImportValue BackendSecurityGroup
+          IpProtocol: -1
+      VpcId: !ImportValue VpcId
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !ImportValue ECSTaskExecutionRoleARN
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: !Ref ServiceName
+          Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/spring-boot-admin:latest
+          Cpu: 256
+          Memory: 512
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue LogGroup
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: !Ref ServiceName
+          PortMappings:
+            - ContainerPort: 9000
+              HostPort: 9000
+          DependsOn:
+            - !Ref AdminSecurityGroup
+          SecurityGroups:
+            - !Ref AdminSecurityGroup
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !ImportValue ECSCluster
+      ServiceName: !Ref ServiceName
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref AdminSecurityGroup
+          Subnets:
+            - !ImportValue Subnet
+Outputs:
+  SpringBootAdminURL:
+    Value: !GetAtt SpringBootAdminService.Arn
+    Export:
+      Name: SpringBootAdminURL
