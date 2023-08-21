@@ -210,15 +210,21 @@ Resources:
       GroupDescription: Access to the public facing load balancer
       VpcId: !Ref LakesideVPC
 
-  #Allowing access to the internal loadbalancer only from the security group
-  # of the frontend containers
-  PrivateLoadBalancerSecurityGroupIngress:
+  PrivateLoadBalancerSecurityGroupIngressFromFrontend:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      Description: Allowing access to the private ALB only from frontend containers
+      Description: Allowing access to the private ALB from frontend containers
       GroupId: !Ref PrivateLoadBalancersSecurityGroup
       IpProtocol: -1
       SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  PrivateLoadBalancerSecurityGroupIngressFromBackend:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allowing access to the private ALB from backend containers
+      GroupId: !Ref PrivateLoadBalancersSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSInternalSecurityGroup
 
   # ECS CLUSTER
   ECSCluster:
