@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policy-management-frontend
+  namespace: lakeside
+  labels:
+    app: policy-management-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policy-management-frontend
+  template:
+    metadata:
+      labels:
+        app: policy-management-frontend
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - arm64
+      containers:
+        - env:
+            - name: VUE_APP_POLICY_MANAGEMENT_BACKEND
+              value: http://34.65.192.94:8090
+          image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/policy-management-frontend:latest
+          imagePullPolicy: Always
+          name: policy-management-frontend
+          ports:
+            - containerPort: 80
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policy-management-frontend
+  namespace: lakeside
+spec:
+  selector:
+    app: policy-management-frontend
+  ports:
+    - name: "3010"
+      port: 3010
+      targetPort: 80
+  type: LoadBalancer
+#  loadBalancerIP: 34.65.192.94

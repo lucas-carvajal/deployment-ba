@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-self-service-backend
+  namespace: lakeside
+  labels:
+    app: customer-self-service-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-self-service-backend
+  template:
+    metadata:
+      labels:
+        app: customer-self-service-backend
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - arm64
+      containers:
+        - env:
+            - name: CUSTOMERCORE_BASEURL
+              value: http://customer-core:8110
+            - name: POLICYMANAGEMENT_TCPBROKERBINDADDRESS
+              value: tcp://policy-management-backend:61616
+            - name: SPRING_BOOT_ADMIN_CLIENT_URL
+              value: http://spring-boot-admin:9000
+          image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-self-service-backend:latest
+          imagePullPolicy: Always
+          name: customer-self-service-backend
+          ports:
+            - containerPort: 8080
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-self-service-backend
+  namespace: lakeside
+spec:
+  selector:
+    app: customer-self-service-backend
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  type: LoadBalancer
+#  loadBalancerIP: 34.65.192.94
