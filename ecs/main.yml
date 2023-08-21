@@ -342,10 +342,10 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           SecurityGroups:
-            - !Ref ECSInternalSecurityGroup
+            - !Ref ECSSecurityGroup
           Subnets:
-            - !Ref PrivateSubnetA
-            - !Ref PrivateSubnetB
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
       LoadBalancers:
         - ContainerName: !Ref SpringBootAdminName
           ContainerPort: 80
@@ -367,12 +367,12 @@ Resources:
   SpringBootAdminLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Scheme: internal
+      Scheme: public
       Subnets:
-        - !Ref PrivateSubnetA
-        - !Ref PrivateSubnetB
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
       SecurityGroups:
-        - !Ref PrivateLoadBalancersSecurityGroup
+        - !Ref PublicLoadBalancersSecurityGroup
   SpringBootAdminLoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -402,7 +402,7 @@ Resources:
           Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/customer-core:latest
           Environment:
             - Name: SERVER_PORT
-              Value: 80
+              Value: "80"
             - Name: SPRING_BOOT_ADMIN_CLIENT_URL
               Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
           LogConfiguration:
