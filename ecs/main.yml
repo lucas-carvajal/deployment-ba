@@ -367,7 +367,7 @@ Resources:
   SpringBootAdminLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Scheme: public
+      Scheme: internet-facing
       Subnets:
         - !Ref PublicSubnetA
         - !Ref PublicSubnetB
