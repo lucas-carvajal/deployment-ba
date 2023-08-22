@@ -49,4 +49,3 @@ spec:
       port: 3010
       targetPort: 80
   type: LoadBalancer
-#  loadBalancerIP: 34.65.192.94
