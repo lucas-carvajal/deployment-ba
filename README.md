@@ -106,6 +106,6 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 
 #### Apply Kubernetes Manifests to Cluster
 ```bash
-kubectl apply -f /eks
+kubectl apply -f eks/
 ```
 
