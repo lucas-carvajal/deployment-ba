@@ -47,10 +47,10 @@ eksctl create fargateprofile \
 reference: https://docs.aws.amazon.com/eks/latest/userguide/fargate-logging.html
 
 Create observability namespace  
-`kubectl apply -f /eks/other/aws-observability-namespace.yaml`
+`kubectl apply -f eks/other/observability-namespace.yml `
 
 Apply Cloudwatch ConfigMap  
-`kubectl apply -f /eks/other/aws-logging-cloudwatch-configmap.yaml`
+`kubectl apply -f eks/other/aws-logging-cloudwatch-configmap.yml`
 
 Download Cloudwatch IAM policy  
 `curl -O https://raw.githubusercontent.com/aws-samples/amazon-eks-fluent-logging-examples/mainline/examples/fargate/cloudwatchlogs/permissions.json`
