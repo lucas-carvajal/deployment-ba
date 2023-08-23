@@ -19,7 +19,7 @@ aws cloudformation delete-stack \
 
 
 ## EKS
-Deploy EKS Cluster  
+Create EKS cluster  
 `eksctl create cluster --name lakeside --region eu-central-1 --fargate`
 
 Update kubeconfig file  
@@ -52,10 +52,10 @@ Create observability namespace
 Apply Cloudwatch ConfigMap  
 `kubectl apply -f /eks/other/aws-logging-cloudwatch-configmap.yaml`
 
-Download Cloudwatch IAM Policy  
+Download Cloudwatch IAM policy  
 `curl -O https://raw.githubusercontent.com/aws-samples/amazon-eks-fluent-logging-examples/mainline/examples/fargate/cloudwatchlogs/permissions.json`
 
-Attach IAM Policy to Pod Execution Policy (replace accountId and execution role if needed)  
+Attach IAM policy to pod execution policy (replace accountId and execution role if needed)  
 ```bash
 aws iam attach-role-policy \
   --policy-arn arn:aws:iam::063725538836:policy/eks-fargate-logging-policy \
@@ -63,10 +63,10 @@ aws iam attach-role-policy \
 ```
 
 #### Set up LoadBalancer Controller Add-On
-for automatically creating LoadBalancers for Services of type LoadBalancer  
+for automatically creating LoadBalancers for services of type LoadBalancer  
 reference: https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
 
-Create IAM Policy for LoadBalancer Controller  
+Create IAM policy for LoadBalancer Controller  
 `curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.5.4/docs/install/iam_policy.json`
 
 Create IAM Policy for LoadBalancer Controller
