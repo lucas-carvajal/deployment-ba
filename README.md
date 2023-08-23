@@ -55,6 +55,9 @@ Apply Cloudwatch ConfigMap
 Download Cloudwatch IAM policy  
 `curl -O https://raw.githubusercontent.com/aws-samples/amazon-eks-fluent-logging-examples/mainline/examples/fargate/cloudwatchlogs/permissions.json`
 
+Create IAM logging policy  
+`aws iam create-policy --policy-name eks-fargate-logging-policy --policy-document file://permissions.json`
+
 Attach IAM policy to pod execution policy (replace accountId and execution role if needed)  
 ```bash
 aws iam attach-role-policy \
