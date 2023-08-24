@@ -19,8 +19,21 @@ aws cloudformation delete-stack \
 
 
 ## EKS
-Create EKS cluster  
-`eksctl create cluster --name lakeside --region eu-central-1 --fargate`
+Create EKS cluster
+`eksctl create cluster --name lakeside --version 1.27 --without-nodegroup`
+
+Add node group
+```bash
+eksctl create nodegroup \
+  --cluster lakeside \
+  --region eu-central-1 \
+  --name graviton-mng \
+  --node-type m6g.medium \
+  --nodes 2\
+  --nodes-min 1\
+  --nodes-max 3\
+  --managed
+```
 
 Update kubeconfig file  
 `aws eks update-kubeconfig --region eu-central-1 --name lakeside`
