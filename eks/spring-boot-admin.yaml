@@ -48,7 +48,6 @@ spec:
       port: 9000
       targetPort: 9000
   type: LoadBalancer
-#  loadBalancerIP: 34.65.192.94
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
