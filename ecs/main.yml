@@ -281,6 +281,14 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref PrivateLoadBalancersSecurityGroup
 
+  PublicLoadBalancerIngressFromECSInternalSecurityGroup:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the private ALB
+      GroupId: !Ref PublicLoadBalancersSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ECSInternalSecurityGroup
+
   ECSSecurityGroupIngressFromSelf:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
