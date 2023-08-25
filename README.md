@@ -6,7 +6,7 @@ cd into the `/ecs` directory, then:
 #### Deploy
 ```
 aws cloudformation create-stack \
-	--stack-name lakeside-test \
+	--stack-name lakeside \
 	--template-body file://./main.yml \
 	--capabilities CAPABILITY_NAMED_IAM
 ````
@@ -14,7 +14,7 @@ aws cloudformation create-stack \
 #### Delete
 ```
 aws cloudformation delete-stack \
-  --stack-name lakeside-test
+  --stack-name lakeside
 ````
 
 
