@@ -15,14 +15,14 @@ aws cloudformation create-stack \
 ```
 aws cloudformation delete-stack \
   --stack-name lakeside
-````
+```
 
 
 ## EKS
 Create EKS cluster
 `eksctl create cluster --name lakeside --version 1.27 --without-nodegroup`
 
-Add node group
+Add node group (or create fargate profiles as described below)
 ```bash
 eksctl create nodegroup \
   --cluster lakeside \
@@ -35,13 +35,7 @@ eksctl create nodegroup \
   --managed
 ```
 
-Update kubeconfig file  
-`aws eks update-kubeconfig --region eu-central-1 --name lakeside`
-
-Create lakeside namespace  
-`kubectl create namespace lakeside`
-
-Create fargate profiles for lakeside and kubeconfig namespaces
+Create fargate profiles for lakeside and kubeconfig namespaces (if node groups are not added)
 ```bash
 eksctl create fargateprofile \
     --cluster lakeside \
@@ -55,6 +49,12 @@ eksctl create fargateprofile \
     --name kube-system-profile \
     --namespace kube-system
 ```
+
+Update kubeconfig file  
+`aws eks update-kubeconfig --region eu-central-1 --name lakeside`
+
+Create lakeside namespace  
+`kubectl create namespace lakeside`
 
 #### Set up logging support
 reference: https://docs.aws.amazon.com/eks/latest/userguide/fargate-logging.html
