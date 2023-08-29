@@ -193,7 +193,19 @@ Resources:
       RouteTableId: !Ref PrivateRouteTableB
 
 
-  # LOAD BALANCERS
+  # SECURITY GROUPS
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public ECS containers
+      VpcId: !Ref LakesideVPC
+
+  ECSInternalSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS private containers
+      VpcId: !Ref LakesideVPC
+
   PublicLoadBalancersSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -209,7 +221,12 @@ Resources:
     Properties:
       GroupDescription: Access to the public facing load balancer
       VpcId: !Ref LakesideVPC
+      SecurityGroupIngress:
+        # Allow access to ALB from public security group
+        - SourceSecurityGroupId: !Ref ECSSecurityGroup
+          IpProtocol: -1
 
+  # SECURITY GROUPS INGRESS
   PrivateLoadBalancerSecurityGroupIngressFromFrontend:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -225,45 +242,6 @@ Resources:
       GroupId: !Ref PrivateLoadBalancersSecurityGroup
       IpProtocol: -1
       SourceSecurityGroupId: !Ref ECSInternalSecurityGroup
-
-  # ECS CLUSTER
-  ECSCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: lakeside-cluster
-
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: lakeside-log-group
-
-  ECSTaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: lakeside-backend-execution-role
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ecs-tasks.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-  # SECURITY GROUPS
-  ECSSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the public ECS containers
-      VpcId: !Ref LakesideVPC
-
-  ECSInternalSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Access to the ECS private containers
-      VpcId: !Ref LakesideVPC
 
   ECSSecurityGroupIngressFromPublicALB:
     Type: AWS::EC2::SecurityGroupIngress
@@ -305,6 +283,31 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref ECSSecurityGroup
 
+  # ECS CLUSTER
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: lakeside-cluster
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: lakeside-log-group
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lakeside-backend-execution-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
 
 
 
