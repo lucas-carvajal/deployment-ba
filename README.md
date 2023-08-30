@@ -17,6 +17,15 @@ aws cloudformation delete-stack \
   --stack-name lakeside
 ```
 
+#### Connect to Bastion Host EC2 Instance
+In the AWS Console, go to EC2 -> Key Pairs and find the Bastion KeyPair.
+
+Download the private key and by using the Bastion KeyPair's ID:  
+`aws ssm get-parameter --name /ec2/keypair/key-0cc8f98192bf6689bREPLACE --with-decryption --query Parameter.Value --output text > new-key-pair.pem`
+
+Then in the AWS Console, got to EC2 -> Instances, find the Bastion Host Instance, 
+click on the "Connect" button and follow the instructions.
+
 
 ## EKS
 Create EKS cluster

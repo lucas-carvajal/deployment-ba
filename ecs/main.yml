@@ -1221,3 +1221,48 @@ Resources:
       LoadBalancerArn: !Ref PolicyManagementFrontendLoadBalancer
       Port: 80
       Protocol: HTTP
+
+  # BASTION HOST STUFF
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref LakesideVPC
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+
+  PrivateLoadBalancerSecurityGroupIngressFromBastion:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allowing access to the private ALB from bastion host
+      GroupId: !Ref PrivateLoadBalancersSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  BastionKeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: bastion-keypair
+
+  LinuxBastionHost:
+    Type: AWS::EC2::Instance
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      KeyName: !Ref BastionKeyPair
+      ImageId: "ami-0766f68f0b06ab145"
+      InstanceType: t2.micro
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeleteOnTermination: "true"
+          Description: ENI for bastion host
+          DeviceIndex: '0'
+          SubnetId: !Ref PublicSubnetA
+          GroupSet:
+            - !Ref BastionSecurityGroup
