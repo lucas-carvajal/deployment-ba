@@ -251,7 +251,7 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref PublicLoadBalancersSecurityGroup
 
-  ECSSecurityGroupIngressFromPrivateALB:
+  ECSInternalSecurityGroupIngressFromPrivateALB:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Ingress from the private ALB
@@ -267,7 +267,7 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref ECSInternalSecurityGroup
 
-  ECSSecurityGroupIngressFromSelf:
+  ECSInternalSecurityGroupIngressFromSelf:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       Description: Ingress from other containers in the same security group
@@ -421,7 +421,9 @@ Resources:
             - Name: SERVER_PORT
               Value: "80"
             - Name: SPRING_BOOT_ADMIN_CLIENT_URL
-              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt SpringBootAdminLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -509,9 +511,13 @@ Resources:
             - Name: SERVER_PORT
               Value: 80
             - Name: SPRING_BOOT_ADMIN_CLIENT_URL
-              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt SpringBootAdminLoadBalancer.DNSName
             - Name: CUSTOMERCORE_BASEURL
-              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerCoreLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -599,11 +605,17 @@ Resources:
             - Name: SERVER_PORT
               Value: 80
             - Name: SPRING_BOOT_ADMIN_CLIENT_URL
-              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt SpringBootAdminLoadBalancer.DNSName
             - Name: CUSTOMERCORE_BASEURL
-              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerCoreLoadBalancer.DNSName
             - Name: POLICYMANAGEMENT_TCPBROKERBINDADDRESS
-              Value: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
+              Value: !Sub
+                - "tcp://${lb_url}:61616"
+                - lb_url: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -690,9 +702,13 @@ Resources:
             - Name: SERVER_PORT
               Value: 80
             - Name: SPRING_BOOT_ADMIN_CLIENT_URL
-              Value: !GetAtt SpringBootAdminLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt SpringBootAdminLoadBalancer.DNSName
             - Name: CUSTOMERCORE_BASEURL
-              Value: !GetAtt CustomerCoreLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerCoreLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -845,7 +861,9 @@ Resources:
           Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/risk-management-server:latest
           Environment:
             - Name: ACTIVEMQ_HOST
-              Value: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt PolicyManagementBackendNetworkLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -944,9 +962,13 @@ Resources:
             - Name: PORT
               Value: 80
             - Name: REACT_APP_CUSTOMER_SELF_SERVICE_BACKEND
-              Value: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
             - Name: REACT_APP_CUSTOMER_MANAGEMENT_BACKEND
-              Value: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -1034,11 +1056,17 @@ Resources:
             - Name: PORT
               Value: 80
             - Name: REACT_APP_CUSTOMER_SELF_SERVICE_BACKEND
-              Value: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerSelfServiceBackendLoadBalancer.DNSName
             - Name: REACT_APP_POLICY_MANAGEMENT_BACKEND
-              Value: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
             - Name: REACT_APP_CUSTOMER_MANAGEMENT_BACKEND
-              Value: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt CustomerManagementBackendLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -1126,7 +1154,9 @@ Resources:
           Image: 063725538836.dkr.ecr.eu-central-1.amazonaws.com/policy-management-frontend:latest
           Environment:
             - Name: VUE_APP_POLICY_MANAGEMENT_BACKEND
-              Value: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
+              Value: !Sub
+                - "http://${lb_url}"
+                - lb_url: !GetAtt PolicyManagementBackendLoadBalancer.DNSName
           LogConfiguration:
             LogDriver: awslogs
             Options:
