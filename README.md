@@ -1,5 +1,15 @@
 # deployments-ba
-Deployment Files for Bachelor Thesis
+Deployment Files for Bachelor Thesis 
+"Cloud-Native Software Quality: Evaluating A
+Practical Example"
+
+### Disclaimer
+For the ECS deployment, the health checks for the Customer Self Service Backend and the Risk Management Server still fail
+(possibly due to the networking being misconfigured for the ActiveMQ TCP connection) and need some more work.
+
+For the EKS deployment, the connection to the frontend via the ingresses still does not work as expected and needs some more work.
+
+
 
 ## ECS Stack
 cd into the `/ecs` directory, then:
@@ -38,9 +48,9 @@ eksctl create nodegroup \
   --region eu-central-1 \
   --name graviton-mng \
   --node-type m6g.medium \
-  --nodes 2\
-  --nodes-min 1\
-  --nodes-max 3\
+  --nodes 4\
+  --nodes-min 2\
+  --nodes-max 6\
   --managed
 ```
 
